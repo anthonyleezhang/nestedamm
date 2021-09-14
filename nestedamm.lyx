@@ -1,0 +1,1134 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\begin_preamble
+\usepackage[T1]{fontenc}
+
+\usepackage[tracking]{microtype}
+
+\usepackage[sc,osf]{mathpazo}   % With old-style figures and real smallcaps.
+\linespread{1.5}              % Palatino leads a little more leading
+
+% Euler for math and numbers
+% \usepackage[euler-digits,small]{eulervm}
+\usepackage{eulervm}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  citecolor=blue,
+  linkcolor=blue,
+  urlcolor=blue,
+  filecolor=blue
+}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usetikzlibrary{math}
+\usetikzlibrary{calc}
+\usetikzlibrary{arrows}
+\usetikzlibrary{shapes}
+\end_preamble
+\use_default_options true
+\begin_modules
+theorems-ams-bytype
+theorems-ams-extended-bytype
+\end_modules
+\maintain_unincluded_children false
+\language english
+\language_package none
+\inputencoding utf8
+\fontencoding default
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing onehalf
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 0
+\use_package cancel 0
+\use_package esint 1
+\use_package mathdots 0
+\use_package mathtools 0
+\use_package mhchem 0
+\use_package stackrel 0
+\use_package stmaryrd 0
+\use_package undertilde 0
+\cite_engine natbib
+\cite_engine_type authoryear
+\biblio_style \use_bibtopic false
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 0
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 2.5cm
+\topmargin 3cm
+\rightmargin 2.5cm
+\bottommargin 3cm
+\footskip 1cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Nested AMMs
+\end_layout
+
+\begin_layout Author
+Anthony Lee Zhang
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+Thanks Paul Vienhage for a conversation that inspired this.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Suppose we want to design a three-product AMM: an AMM that can trade cash
+ (that is, say, some stablecoin), which we'll call 
+\begin_inset Formula $y$
+\end_inset
+
+, with two different kinds of tokens, 
+\begin_inset Formula $a$
+\end_inset
+
+ and 
+\begin_inset Formula $b$
+\end_inset
+
+.
+ Suppose also that 
+\begin_inset Formula $a$
+\end_inset
+
+ and 
+\begin_inset Formula $b$
+\end_inset
+
+ are ``similar'' products in some sense.
+ Here are some hypothetical examples.
+\end_layout
+
+\begin_layout Itemize
+Suppose 
+\begin_inset Formula $a$
+\end_inset
+
+ and 
+\begin_inset Formula $b$
+\end_inset
+
+ are both ETH perps, with slighly different contract specs.
+ However, 
+\begin_inset Formula $a$
+\end_inset
+
+ and 
+\begin_inset Formula $b$
+\end_inset
+
+ generally have very similar market prices.
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $a$
+\end_inset
+
+ and 
+\begin_inset Formula $b$
+\end_inset
+
+ are options on ETH with similar strikes
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $a$
+\end_inset
+
+ and 
+\begin_inset Formula $b$
+\end_inset
+
+ are both claims on yields, so their prices tend to move closely together.
+\end_layout
+
+\begin_layout Itemize
+Many other case where tokens 
+\begin_inset Formula $a$
+\end_inset
+
+ and 
+\begin_inset Formula $b$
+\end_inset
+
+'s prices tend to have some correlation.
+ 
+\end_layout
+
+\begin_layout Standard
+In such settings, we might want our AMM to behave in a way that recognizes
+ that 
+\begin_inset Formula $a$
+\end_inset
+
+ and 
+\begin_inset Formula $b$
+\end_inset
+
+ are very similar to each other.
+ What does this mean? If 
+\begin_inset Formula $a$
+\end_inset
+
+ and 
+\begin_inset Formula $b$
+\end_inset
+
+ are economically similar, the AMM's portfolio has roughly the same risk
+ exposures if it holds a lot of 
+\begin_inset Formula $a$
+\end_inset
+
+ and a little 
+\begin_inset Formula $b$
+\end_inset
+
+, or vice versa.
+ Thus, the AMM should be willing to trade 
+\begin_inset Formula $a$
+\end_inset
+
+ for 
+\begin_inset Formula $b$
+\end_inset
+
+, allowing relatively low price slippage.
+ On the other hand, the AMM should allow higher price slippage when trading
+ 
+\begin_inset Formula $a$
+\end_inset
+
+ or 
+\begin_inset Formula $b$
+\end_inset
+
+ for cash, since this changes the AMM's total risk exposure.
+ 
+\end_layout
+
+\begin_layout Standard
+In this note, I describe a simple AMM design which accomplishes this, which
+ I call the 
+\emph on
+nested AMM.
+ 
+\end_layout
+
+\begin_layout Section
+Nested AMMs
+\end_layout
+
+\begin_layout Standard
+Consider an AMM which uses the following class of functions as a ``constant
+ curve'': 
+\begin_inset Formula 
+\begin{equation}
+U\left(a,b,y\right)=\left(\left(a^{1-\sigma}+b^{1-\sigma}\right)^{\frac{1}{1-\sigma}}\right)^{1-\eta}+y^{1-\eta}\label{eq:Ufun}
+\end{equation}
+
+\end_inset
+
+Where 
+\begin_inset Formula $\eta>y$
+\end_inset
+
+.
+ This defines an AMM, since, suppose the stablecoin begins with 
+\begin_inset Formula $a,b,y$
+\end_inset
+
+.
+ Suppose an agent wants to buy 
+\begin_inset Formula $y$
+\end_inset
+
+ by paying 
+\begin_inset Formula $a$
+\end_inset
+
+.
+ The AMM is willing to make any trade of 
+\begin_inset Formula $\Delta_{y}$
+\end_inset
+
+ of 
+\begin_inset Formula $y$
+\end_inset
+
+ for 
+\begin_inset Formula $\Delta_{a}$
+\end_inset
+
+ of 
+\begin_inset Formula $a$
+\end_inset
+
+, as long as 
+\begin_inset Formula $U$
+\end_inset
+
+ stays fixed: 
+\begin_inset Formula 
+\begin{equation}
+U\left(a,b,y\right)=U\left(a+\Delta_{a},b,y-\Delta_{y}\right)\label{eq:priceformula}
+\end{equation}
+
+\end_inset
+
+This is a simple example of a constant function market maker (
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+citet{angeris2020improved}
+\end_layout
+
+\end_inset
+
+).
+ I claim that it accomplishes the desired goal, of allowing the 
+\begin_inset Formula $a,b$
+\end_inset
+
+ slippage to be low while the 
+\begin_inset Formula $a,y$
+\end_inset
+
+ and 
+\begin_inset Formula $b,y$
+\end_inset
+
+ trade price slippage is high.
+ Let's use a simple example to illustrate this, setting 
+\begin_inset Formula $\sigma=0.2,\eta=0.8$
+\end_inset
+
+.
+ Hence, we have:
+\begin_inset Formula 
+\[
+U\left(a,b,y\right)=\left(\left(a^{1-0.2}+b^{1-0.2}\right)^{\frac{1}{1-0.2}}\right)^{1-0.8}+y^{1-0.8}
+\]
+
+\end_inset
+
+Now let's do some numerical experiments.
+ Suppose we start with 10 units each of 
+\begin_inset Formula $a,b,y$
+\end_inset
+
+.
+ This gives the constant approximately 3.58.
+ I calculate prices for different trades in accompanying Github code available
+ 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+href{https://github.com/anthonyleezhang/nestedamm}{here}
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+To calculate price slippage, we'll ask a simple question: let's try to spend
+ 1, 2, and 3 units of 
+\begin_inset Formula $a$
+\end_inset
+
+ to buy 
+\begin_inset Formula $y$
+\end_inset
+
+ from the AMM, and see how much the price of 
+\begin_inset Formula $y$
+\end_inset
+
+ in terms of 
+\begin_inset Formula $a$
+\end_inset
+
+ changes.
+ Then, let's try to spend 1, 2, and 3 units of 
+\begin_inset Formula $a$
+\end_inset
+
+ to buy 
+\begin_inset Formula $b$
+\end_inset
+
+, and see how the price changes.
+ 
+\end_layout
+
+\begin_layout Itemize
+If you use 1, 2, or 3 units of 
+\begin_inset Formula $a$
+\end_inset
+
+ to buy 
+\begin_inset Formula $y$
+\end_inset
+
+, you can buy respectively 0.597, 1.136, 1.624 units of 
+\begin_inset Formula $y$
+\end_inset
+
+.
+ The prices are 1.76, 1.84, 1.92.
+ To calculate slippage, note that spending 3 units of 
+\begin_inset Formula $a$
+\end_inset
+
+ instead of 1 unit increases the price by 
+\begin_inset Formula $\frac{1.92}{1.76}-1=9.2\%$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+If you use 1, 2, or 3 units of 
+\begin_inset Formula $a$
+\end_inset
+
+ to buy 
+\begin_inset Formula $b$
+\end_inset
+
+, you can buy respectively 0.96, 1.85, 2.68 units of 
+\begin_inset Formula $b$
+\end_inset
+
+.
+ The prices are 1.02, 1.04, 1.06.
+ Buying 3 units of 1 unit increases the price of 
+\begin_inset Formula $b$
+\end_inset
+
+ in terms of 
+\begin_inset Formula $a$
+\end_inset
+
+, by 
+\begin_inset Formula $\frac{1.06}{1.02}-1=4.0\%$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+So, this accomplishes the desired behavior: 
+\begin_inset Formula $a,b$
+\end_inset
+
+ price slippage is lower than 
+\begin_inset Formula $a,y$
+\end_inset
+
+ price slippage.
+ 
+\end_layout
+
+\begin_layout Standard
+To see mathematically what is going on, note that in (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:Ufun"
+
+\end_inset
+
+), 
+\begin_inset Formula $a$
+\end_inset
+
+ and 
+\begin_inset Formula $b$
+\end_inset
+
+ live in a ``nest'', with the curvature/substitution elasticity between
+ them governed by the parameter 
+\begin_inset Formula $\sigma$
+\end_inset
+
+.
+ They effectively create a ``composite product'':
+\begin_inset Formula 
+\[
+\left(a^{1-\sigma}+b^{1-\sigma}\right)^{\frac{1}{1-\sigma}}
+\]
+
+\end_inset
+
+This ``composite'' then substitutes with 
+\begin_inset Formula $y$
+\end_inset
+
+, with the curvature/substitution elasticity between them governed by the
+ parameter 
+\begin_inset Formula $\eta$
+\end_inset
+
+.
+ When 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ is low, 
+\begin_inset Formula $a$
+\end_inset
+
+ and 
+\begin_inset Formula $b$
+\end_inset
+
+ are ``good substitutes'' and can be traded with low slippage.
+ When 
+\begin_inset Formula $\eta$
+\end_inset
+
+ is low, the 
+\begin_inset Formula $a,b$
+\end_inset
+
+ ``composite product'' can be traded with 
+\begin_inset Formula $y$
+\end_inset
+
+ at low slippage.
+ So when 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ is low but 
+\begin_inset Formula $\eta$
+\end_inset
+
+ is high, 
+\begin_inset Formula $a,b$
+\end_inset
+
+ can be traded with low slippage, but 
+\begin_inset Formula $a,y$
+\end_inset
+
+ and 
+\begin_inset Formula $b,y$
+\end_inset
+
+ trade at high slippage.
+ 
+\end_layout
+
+\begin_layout Section
+General formula
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+More than three tokens.
+ 
+\series default
+The three-product example easily generalizes.
+ We can in general do: 
+\begin_inset Formula 
+\begin{equation}
+U\left(x_{1}\ldots x_{n},y\right)=\left(\left(\sum_{i=1}^{n}w_{i}x_{i}^{1-\sigma}\right)^{\frac{1}{1-\sigma}}\right)^{1-\eta}+w_{y}y^{1-\eta}\label{eq:generalnested}
+\end{equation}
+
+\end_inset
+
+Expression (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:generalnested"
+
+\end_inset
+
+) allows multiple kinds of tokens in the ``nest''.
+ Tokens can be weighted with weights 
+\begin_inset Formula $w_{i}$
+\end_inset
+
+: this could be useful, for example, if the tokens have different risk exposures
+: for example if the AMM is trading 2x and 4x leveraged perps, the AMM may
+ want to put a different weight on the tokens, to reflect their risk exposures.
+ 
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+Multiple nests.
+ 
+\series default
+We could include multiple nests: 
+\begin_inset Formula 
+\begin{equation}
+U\left(x_{1}\ldots x_{n},z_{1}\ldots z_{m},y\right)=\left(\left(\sum_{i=1}^{n}w_{xi}x_{i}^{1-\sigma_{x}}\right)^{\frac{1}{1-\sigma_{x}}}\right)^{1-\eta}+\left(\left(\sum_{j=1}^{m}w_{zj}z_{j}^{1-\sigma_{z}}\right)^{\frac{1}{1-\sigma_{z}}}\right)^{1-\eta}+w_{y}y^{1-\eta}\label{eq:multiplenests}
+\end{equation}
+
+\end_inset
+
+Things like (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:multiplenests"
+
+\end_inset
+
+) might be useful if we want one AMM to make markets for multiple nests
+ of products.
+ For example, the 
+\begin_inset Formula $x$
+\end_inset
+
+ nest could be BTH futures or options, and the 
+\begin_inset Formula $z$
+\end_inset
+
+ nest could be ETH futures and options.
+ There's correlations within the buckets, so we want to make it easy (low
+ price slippage) to trade tokens within the nests for each other, and harder
+ – but still possible, though with higher price slippage – to trade tokens
+ across nests.
+ Note that the substitution elasticity parameters, 
+\begin_inset Formula $\sigma_{x}$
+\end_inset
+
+ and 
+\begin_inset Formula $\sigma_{z}$
+\end_inset
+
+ in the example, can vary across nests.
+ 
+\end_layout
+
+\begin_layout Standard
+If an AMM wants to allow multiple kinds of stablecoins, one option would
+ be to expand 
+\begin_inset Formula $y$
+\end_inset
+
+ into a ``cash nest'', with a substitution parameter 
+\begin_inset Formula $\sigma_{y}$
+\end_inset
+
+ very close to 0, so that there's very little slippage (i.e.
+ the AMM is happy to hold many different mixes of stablecoins, but maintains
+ a certain ratio of total stablecoins relative to non-stablecoin tokens)
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+Multi-layered nests.
+ 
+\series default
+Another trick is that we can put 
+\emph on
+nests within nests
+\emph default
+.
+ The simplest example is:
+\begin_inset Formula 
+\[
+U\left(x_{1}\ldots x_{n},z_{1}\ldots z_{m},y\right)=\left(\left(\left(\left(x_{1}^{1-\theta}+x_{2}^{1-\theta}\right)^{\frac{1}{1-\theta}}\right)^{1-\sigma}+x_{3}^{1-\sigma}\right)^{\frac{1}{1-\sigma}}\right)^{1-\eta}+y^{1-\eta}
+\]
+
+\end_inset
+
+Where we have 
+\begin_inset Formula $\eta>\sigma>\theta$
+\end_inset
+
+.
+ The intuition behind the previous cases extends: the closer two tokens
+ are in terms of nests, the lower the price slippage.
+ 
+\begin_inset Formula $x_{1}$
+\end_inset
+
+ and 
+\begin_inset Formula $x_{2}$
+\end_inset
+
+ can be traded with low slippage; 
+\begin_inset Formula $x_{1}$
+\end_inset
+
+ and 
+\begin_inset Formula $x_{3}$
+\end_inset
+
+ with slightly higher slippage; and 
+\begin_inset Formula $x_{1}$
+\end_inset
+
+ and 
+\begin_inset Formula $y$
+\end_inset
+
+ with even higher price slippage.
+ Once again, this tends to encourage trading products within nests.
+ 
+\end_layout
+
+\begin_layout Section
+Literature
+\end_layout
+
+\begin_layout Standard
+This builds off a trick from the economics literature of 
+\emph on
+nested
+\emph default
+ 
+\emph on
+CES utility functions
+\emph default
+.
+ These are used in economics to model settings in which products are more
+ substitutable within nests than across them.
+ It's a common trick in economics: I don't know the original reference,
+ but see for example 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+citet{engel2021composing}
+\end_layout
+
+\end_inset
+
+, 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+citet{perroni1995regular}
+\end_layout
+
+\end_inset
+
+, 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+citet{keller1976nested}
+\end_layout
+
+\end_inset
+
+.
+ The mapping to AMMs exploits a known result in the AMMs literature that
+ there is a duality between quasi-concave utility functions and AMMs: see
+ for example 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+citet{angeris2020improved}
+\end_layout
+
+\end_inset
+
+, 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+citet{angeris2021replicating}
+\end_layout
+
+\end_inset
+
+, 
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+citet{engel2021composing}
+\end_layout
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Section
+Detailed math
+\end_layout
+
+\begin_layout Standard
+This section is aimed at those who are familiar with some AMM theory.
+ To characterize the behavior of a given AMM, we basically want to characterize
+ the behavior of marginal rates of substitution.
+ Consider the function:
+\begin_inset Formula 
+\begin{equation}
+U\left(a,b,y\right)=\left(\left(a^{1-\sigma}+b^{1-\sigma}\right)^{\frac{1}{1-\sigma}}\right)^{1-\eta}+y^{1-\eta}\label{eq:Uappexp}
+\end{equation}
+
+\end_inset
+
+We want to solve for the marginal rates of substitution, which are the derivativ
+es: 
+\begin_inset Formula 
+\[
+\frac{db}{da}=\frac{\frac{\partial U}{\partial a}}{\frac{\partial U}{\partial b}},\frac{dy}{da}=\frac{\frac{\partial U}{\partial a}}{\frac{\partial U}{\partial y}}
+\]
+
+\end_inset
+
+(Note that by symmetry we'll have 
+\begin_inset Formula $\frac{\frac{\partial U}{\partial a}}{\frac{\partial U}{\partial y}}=\frac{\frac{\partial U}{\partial b}}{\frac{\partial U}{\partial y}}$
+\end_inset
+
+ so we skip the last one).
+ In AMM terms, the marginal rates of substitution are the rates at which
+ the AMM will make infinitisemally small trades, if its current holdings
+ are 
+\begin_inset Formula $a,b,y$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+To calculate these, note that we can alternatively write 
+\begin_inset Formula $U\left(a,b,y\right)$
+\end_inset
+
+ as: 
+\begin_inset Formula 
+\[
+U\left(a,b,y\right)=x^{1-\eta}+y^{1-\eta}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{equation}
+x^{1-\sigma}=a^{1-\sigma}+b^{1-\sigma}\label{eq:xcomp}
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $x$
+\end_inset
+
+ is basically a ``composite good'' made from 
+\begin_inset Formula $a$
+\end_inset
+
+ and 
+\begin_inset Formula $b$
+\end_inset
+
+.
+ Now, totally differentiating (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:xcomp"
+
+\end_inset
+
+), we have:
+\begin_inset Formula 
+\[
+\left(1-\sigma\right)x^{-\sigma}dx=\left(1-\sigma\right)a^{-\sigma}da+\left(1-\sigma\right)b^{-\sigma}db
+\]
+
+\end_inset
+
+This gives us: 
+\begin_inset Formula 
+\begin{equation}
+\frac{\partial x}{\partial a}=\left(\frac{a}{x}\right)^{-\sigma}\label{eq:dxda}
+\end{equation}
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\frac{\partial x}{\partial b}=\left(\frac{b}{x}\right)^{-\sigma}
+\]
+
+\end_inset
+
+Now, using (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:dxda"
+
+\end_inset
+
+) and (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:Uappexp"
+
+\end_inset
+
+), we have:
+\begin_inset Formula 
+\[
+\frac{\partial U}{\partial y}=\left(1-\eta\right)y^{-\eta}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\frac{\partial U}{\partial x}=\left(1-\eta\right)x^{-\eta}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\frac{\partial x}{\partial a}=\left(\frac{a}{x}\right)^{-\sigma}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\frac{\partial U}{\partial a}=\frac{\partial U}{\partial x}\frac{\partial x}{\partial a}=\left(1-\eta\right)x^{-\eta}\left(\frac{a}{x}\right)^{-\sigma}
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\frac{\partial U}{\partial b}=\frac{\partial U}{\partial x}\frac{\partial x}{\partial b}=\left(1-\eta\right)x^{-\eta}\left(\frac{b}{x}\right)^{-\sigma}
+\]
+
+\end_inset
+
+Hence we can get the MRSs:
+\begin_inset Formula 
+\begin{equation}
+\frac{dy}{da}=\frac{\frac{\partial U}{\partial a}}{\frac{\partial U}{\partial y}}=\frac{\left(1-\eta\right)x^{-\eta}\left(\frac{a}{x}\right)^{-\sigma}}{\left(1-\eta\right)y^{-\eta}}=\left(\frac{x}{y}\right)^{-\eta}\left(\frac{a}{x}\right)^{-\sigma}=\left(\frac{\left(a^{1-\sigma}+b^{1-\sigma}\right)^{\frac{1}{1-\sigma}}}{y}\right)^{-\eta}\left(\frac{a}{\left(a^{1-\sigma}+b^{1-\sigma}\right)^{\frac{1}{1-\sigma}}}\right)^{-\sigma}\label{eq:yaMRS}
+\end{equation}
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{equation}
+\frac{da}{db}=\frac{\frac{\partial U}{\partial b}}{\frac{\partial U}{\partial a}}=\left(\frac{b}{a}\right)^{-\sigma}\label{eq:abMRS}
+\end{equation}
+
+\end_inset
+
+Expressions (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:yaMRS"
+
+\end_inset
+
+) and (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:abMRS"
+
+\end_inset
+
+) characterize MRSs.
+ The MRS between 
+\begin_inset Formula $a$
+\end_inset
+
+ and 
+\begin_inset Formula $b$
+\end_inset
+
+ only depends on the relative amounts of 
+\begin_inset Formula $b$
+\end_inset
+
+ and 
+\begin_inset Formula $a$
+\end_inset
+
+ the AMM holds.
+ In particular, it's independent of 
+\begin_inset Formula $y$
+\end_inset
+
+, how much cash the AMM holds.
+ On the other hand, the MRS between 
+\begin_inset Formula $y$
+\end_inset
+
+ and 
+\begin_inset Formula $a$
+\end_inset
+
+ depends both on how much of 
+\begin_inset Formula $a$
+\end_inset
+
+ there is relative to 
+\begin_inset Formula $b$
+\end_inset
+
+ (which determines the ratio 
+\begin_inset Formula $\frac{a}{x}$
+\end_inset
+
+), as well as how much of 
+\begin_inset Formula $a$
+\end_inset
+
+ and 
+\begin_inset Formula $b$
+\end_inset
+
+ together the AMM holds relative to cash 
+\begin_inset Formula $y$
+\end_inset
+
+.
+ Moreover, since 
+\begin_inset Formula $\eta>\sigma$
+\end_inset
+
+, we have that 
+\begin_inset Formula $a,y$
+\end_inset
+
+ prices respond more overall to movements in the ratio 
+\begin_inset Formula $\frac{x}{y}$
+\end_inset
+
+, than 
+\begin_inset Formula $a,b$
+\end_inset
+
+ prices respond to movements in 
+\begin_inset Formula $\frac{b}{a}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Section
+References
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+btprint "btPrintCited"
+bibfiles "ammrefs"
+options "ACM-Reference-Format"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
